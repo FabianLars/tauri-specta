@@ -16,6 +16,11 @@ use specta::{
 };
 use tauri::{ipc::Invoke, Manager, Runtime};
 
+#[cfg(feature = "wry")]
+type RT = tauri::Wry;
+#[cfg(feature = "cef")]
+type RT = tauri::Cef;
+
 /// Builder for configuring Tauri Specta in your application.
 ///
 /// # Example
@@ -80,7 +85,7 @@ use tauri::{ipc::Invoke, Manager, Runtime};
 ///     .run(tauri::generate_context!("tests/tauri.conf.json"))
 ///     .expect("error while running tauri application");
 /// ```
-pub struct Builder<R: Runtime = tauri::Wry> {
+pub struct Builder<R: Runtime = RT> {
     // TODO: Can we just hold a `ExportContext` here to make it a bit neater???
     plugin_name: Option<&'static str>,
     commands: Commands<R>,
