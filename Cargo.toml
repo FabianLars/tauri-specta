@@ -58,7 +58,7 @@ todo = { level = "warn", priority = -1 }
 panic_in_result_fn = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
-tauri = { git = "https://github.com/tauri-apps/tauri", rev = "ede0c8ebe805dd914cecd9823bf64a528315e8cf", default-features = false }
+tauri = { git = "https://github.com/tauri-apps/tauri", rev = "58dbfc6d7513cdbb12a8243efce26537c8a71da1", default-features = false }
 tauri-build = { version = "2" }
 tauri-plugin = { version = "2" }
 specta = { version = "=2.0.0-rc.22" }
