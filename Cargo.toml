@@ -63,13 +63,9 @@ todo = { level = "warn", priority = -1 }
 panic_in_result_fn = { level = "warn", priority = -1 }
 
 [workspace.dependencies]
-tauri = { git = "https://github.com/tauri-apps/tauri", branch = "feat/cef", default-features = false }
+tauri = { version = "2", default-features = false }
 tauri-build = { version = "2.0" }
 tauri-plugin = { version = "2.0" }
 specta = { version = "=2.0.0-rc.22" }
 specta-typescript = { version = "0.0.9" }
 specta-jsdoc = { version = "0.0.9" }
-
-[patch.crates-io]
-# Waiting for release of https://github.com/tauri-apps/tauri/pull/12371
-tauri = { git = "https://github.com/tauri-apps/tauri", branch = "feat/cef" }
