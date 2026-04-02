@@ -139,14 +139,19 @@ pub struct Testing {
 
 #[allow(deprecated)]
 fn main() {
-    let builder = Builder::<tauri::Wry>::new()
+    #[cfg(feature = "wry")]
+    type RT = tauri::Wry;
+    #[cfg(not(feature = "cef"))]
+    type RT = tauri::Cef;
+
+    let builder = Builder::<RT>::new()
         .commands(tauri_specta::collect_commands![
             hello_world,
             goodbye_world,
             async_hello_world,
             has_error,
             nested::some_struct,
-            generic::<tauri::Wry>,
+            generic::<R>,
             deprecated,
             with_channel,
             phase_specific_rename,

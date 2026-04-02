@@ -18,6 +18,11 @@ pub enum ErrorHandlingMode {
     Result,
 }
 
+#[cfg(feature = "wry")]
+type RT = tauri::Wry;
+#[cfg(feature = "cef")]
+type RT = tauri::Cef;
+
 /// Builder for configuring Tauri Specta in your application.
 ///
 /// # Example
@@ -84,7 +89,7 @@ pub enum ErrorHandlingMode {
 /// ```
 #[derive(Debug)]
 #[non_exhaustive]
-pub struct Builder<R: Runtime> {
+pub struct Builder<R: Runtime = RT> {
     commands: Commands<R>,
     cfg: BuilderConfiguration,
 }
