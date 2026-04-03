@@ -19,7 +19,7 @@ impl LanguageExt for specta_typescript::Typescript {
             .collect::<Result<Vec<_>, _>>()
             .map(|v| v.join("\n"))?;
 
-        let tanstack_import = super::js::render_tanstack_import(cfg);
+        let tanstack_import = js_ts::render_tanstack_import(cfg);
 
         let header = if tanstack_import.is_empty() {
             self.header.to_string()

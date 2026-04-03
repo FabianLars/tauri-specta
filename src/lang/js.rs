@@ -21,7 +21,7 @@ impl LanguageExt for specta_jsdoc::JSDoc {
             .collect::<Result<Vec<_>, _>>()
             .map(|v| v.join("\n"))?;
 
-        let tanstack_import = render_tanstack_import(cfg);
+        let tanstack_import = js_ts::render_tanstack_import(cfg);
 
         let header = if tanstack_import.is_empty() {
             self.0.header.to_string()
@@ -52,28 +52,6 @@ impl LanguageExt for specta_jsdoc::JSDoc {
     }
 }
 
-pub fn render_tanstack_import(cfg: &ExportContext) -> String {
-    if let Some(framework) = &cfg.tanstack {
-        let has_queries = !cfg.queries.is_empty();
-        let has_mutations = !cfg.mutations.is_empty();
-        if has_queries || has_mutations {
-            let mut imports = Vec::new();
-            if has_queries {
-                imports.push("queryOptions as TANSTACK_QUERY_OPTIONS");
-            }
-            if has_mutations {
-                imports.push("mutationOptions as TANSTACK_MUTATION_OPTIONS");
-            }
-            return format!(
-                "import {{ {} }} from \"{}\";\n",
-                imports.join(", "),
-                framework.package_name()
-            );
-        }
-    }
-
-    String::new()
-}
 
 fn render_commands(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
     let all_commands: Vec<_> = cfg

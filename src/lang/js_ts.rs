@@ -291,3 +291,27 @@ pub fn events_data(
         events_map(events, plugin_name),
     ))
 }
+
+
+pub fn render_tanstack_import(cfg: &ExportContext) -> String {
+    if let Some(framework) = &cfg.tanstack {
+        let has_queries = !cfg.queries.is_empty();
+        let has_mutations = !cfg.mutations.is_empty();
+        if has_queries || has_mutations {
+            let mut imports = Vec::new();
+            if has_queries {
+                imports.push("queryOptions as TANSTACK_QUERY_OPTIONS");
+            }
+            if has_mutations {
+                imports.push("mutationOptions as TANSTACK_MUTATION_OPTIONS");
+            }
+            return format!(
+                "import {{ {} }} from \"{}\";\n",
+                imports.join(", "),
+                framework.package_name()
+            );
+        }
+    }
+
+    String::new()
+}
