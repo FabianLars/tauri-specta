@@ -21,12 +21,24 @@ impl LanguageExt for specta_jsdoc::JSDoc {
             .collect::<Result<Vec<_>, _>>()
             .map(|v| v.join("\n"))?;
 
+        let tanstack_import = render_tanstack_import(cfg);
+
+        let header = if tanstack_import.is_empty() {
+            self.0.header.to_string()
+        } else {
+            format!("{}\n{tanstack_import}", self.0.header)
+        };
+
         js_ts::render_all_parts::<Self>(
             cfg,
             &dependant_types,
             GLOBALS,
-            &self.0.header,
+            &header,
             render_commands(&self.0, cfg)?,
+            render_query_keys(cfg)?,
+            render_queries(cfg)?,
+            render_mutation_keys(cfg)?,
+            render_mutations(cfg)?,
             render_events(&self.0, cfg)?,
             false,
         )
@@ -40,9 +52,38 @@ impl LanguageExt for specta_jsdoc::JSDoc {
     }
 }
 
+pub fn render_tanstack_import(cfg: &ExportContext) -> String {
+    if let Some(framework) = &cfg.tanstack {
+        let has_queries = !cfg.queries.is_empty();
+        let has_mutations = !cfg.mutations.is_empty();
+        if has_queries || has_mutations {
+            let mut imports = Vec::new();
+            if has_queries {
+                imports.push("queryOptions as TANSTACK_QUERY_OPTIONS");
+            }
+            if has_mutations {
+                imports.push("mutationOptions as TANSTACK_MUTATION_OPTIONS");
+            }
+            return format!(
+                "import {{ {} }} from \"{}\";\n",
+                imports.join(", "),
+                framework.package_name()
+            );
+        }
+    }
+
+    String::new()
+}
+
 fn render_commands(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
-    let commands = cfg
+    let all_commands: Vec<_> = cfg
         .commands
+        .iter()
+        .chain(&cfg.queries)
+        .chain(&cfg.mutations)
+        .collect();
+
+    let commands = all_commands
         .iter()
         .map(|function| {
             let jsdoc = {
@@ -92,6 +133,166 @@ fn render_commands(ts: &Typescript, cfg: &ExportContext) -> Result<String, Expor
         r#"export const commands = {{
         {commands}
     }}"#
+    ))
+}
+
+fn render_query_keys(cfg: &ExportContext) -> Result<String, ExportError> {
+    if cfg.queries.is_empty() {
+        return Ok(Default::default());
+    }
+
+    let entries = cfg
+        .queries
+        .iter()
+        .map(|function| {
+            let name = function.name().to_lower_camel_case();
+            let args: Vec<_> = function.args().cloned().collect();
+
+            let key_prefix = if let Some(plugin_name) = cfg.plugin_name {
+                format!("\"plugin:{plugin_name}\", \"{name}\"")
+            } else {
+                format!("\"{name}\"")
+            };
+
+            if args.is_empty() {
+                format!("{name}: () => [{key_prefix}]")
+            } else {
+                let optional_args = args
+                    .iter()
+                    .map(|(n, _)| n.to_lower_camel_case())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                format!(
+                    "{name}: ({optional_args}) => filterKey([{key_prefix}], {{ {optional_args} }})"
+                )
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+
+    Ok(format!(
+        r#"
+export const queryKeys = {{
+    {entries}
+}}"#
+    ))
+}
+
+fn render_queries(cfg: &ExportContext) -> Result<String, ExportError> {
+    if cfg.queries.is_empty() {
+        return Ok(Default::default());
+    }
+
+    let entries = cfg
+        .queries
+        .iter()
+        .map(|function| {
+            let name = function.name().to_lower_camel_case();
+            let args: Vec<_> = function.args().cloned().collect();
+
+            let call_args = args
+                .iter()
+                .map(|(n, _)| n.to_lower_camel_case())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let arg_names_str = call_args.clone();
+
+            let uses_typed_error = js_ts::command_uses_typed_error(function, cfg.error_handling);
+            let query_fn_body = if uses_typed_error {
+                format!("unwrapTypedError(commands.{name}({call_args}))")
+            } else {
+                format!("commands.{name}({call_args})")
+            };
+
+            format!(
+                "{name}: ({arg_names_str}) => TANSTACK_QUERY_OPTIONS({{ queryKey: queryKeys.{name}({call_args}), queryFn: () => {query_fn_body} }})"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+
+    Ok(format!(
+        r#"
+export const queries = {{
+    {entries}
+}}"#
+    ))
+}
+
+fn render_mutation_keys(cfg: &ExportContext) -> Result<String, ExportError> {
+    if cfg.mutations.is_empty() {
+        return Ok(Default::default());
+    }
+
+    let entries = cfg
+        .mutations
+        .iter()
+        .map(|function| {
+            let name = function.name().to_lower_camel_case();
+
+            let key_prefix = if let Some(plugin_name) = cfg.plugin_name {
+                format!("\"plugin:{plugin_name}\", \"{name}\"")
+            } else {
+                format!("\"{name}\"")
+            };
+
+            format!("{name}: () => [{key_prefix}]")
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+
+    Ok(format!(
+        r#"
+export const mutationKeys = {{
+    {entries}
+}}"#
+    ))
+}
+
+fn render_mutations(cfg: &ExportContext) -> Result<String, ExportError> {
+    if cfg.mutations.is_empty() {
+        return Ok(Default::default());
+    }
+
+    let entries = cfg
+        .mutations
+        .iter()
+        .map(|function| {
+            let name = function.name().to_lower_camel_case();
+            let args: Vec<_> = function.args().cloned().collect();
+
+            let call_args = args
+                .iter()
+                .map(|(n, _)| n.to_lower_camel_case())
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let mutation_fn_param = if args.is_empty() {
+                String::new()
+            } else {
+                format!("{{ {call_args} }}")
+            };
+
+            let uses_typed_error = js_ts::command_uses_typed_error(function, cfg.error_handling);
+            let mutation_fn_body = if uses_typed_error {
+                format!("unwrapTypedError(commands.{name}({call_args}))")
+            } else {
+                format!("commands.{name}({call_args})")
+            };
+
+            format!(
+                "{name}: () => TANSTACK_MUTATION_OPTIONS({{ mutationKey: mutationKeys.{name}(), mutationFn: ({mutation_fn_param}) => {mutation_fn_body} }})"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",\n");
+    Ok(format!(
+        r#"
+export const mutations = {{
+    {entries}
+}}"#
     ))
 }
 

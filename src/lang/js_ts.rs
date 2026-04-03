@@ -22,6 +22,10 @@ pub fn render_all_parts<L: LanguageExt>(
     globals: &str,
     header: &str,
     commands: String,
+    query_keys: String,
+    queries: String,
+    mutation_keys: String,
+    mutations: String,
     events: String,
     as_const: bool,
 ) -> Result<String, L::Error> {
@@ -59,6 +63,22 @@ pub fn render_all_parts<L: LanguageExt>(
 /** user-defined commands **/
 
 {commands}
+
+/** user-defined query keys **/
+
+{query_keys}
+
+/** user-defined queries **/
+
+{queries}
+
+/** user-defined mutation keys **/
+
+{mutation_keys}
+
+/** user-defined mutations **/
+
+{mutations}
 
 /** user-defined events **/
 
@@ -193,6 +213,35 @@ pub fn command_body(
         as_any,
         error_handling,
     )
+}
+
+/// Whether a command uses typed error (Result return with Result error handling mode).
+pub fn command_uses_typed_error(
+    function: &datatype::Function,
+    error_handling: ErrorHandlingMode,
+) -> bool {
+    matches!(error_handling, ErrorHandlingMode::Result)
+        && matches!(function.result(), Some(FunctionResultVariant::Result(_, _)))
+}
+
+/// Extract (ok_type, err_type) strings for tanstack generics.
+pub fn extract_tanstack_result_types(
+    function: &datatype::Function,
+    ts_cfg: &Typescript,
+    type_map: &TypeMap,
+) -> Result<(String, Option<String>), ExportError> {
+    match function.result() {
+        Some(FunctionResultVariant::Result(ok, err)) => {
+            let data = ts::datatype(ts_cfg, &FunctionResultVariant::Value(ok.clone()), type_map)?;
+            let error = ts::datatype(ts_cfg, &FunctionResultVariant::Value(err.clone()), type_map)?;
+            Ok((data, Some(error)))
+        }
+        Some(FunctionResultVariant::Value(t)) => {
+            let data = ts::datatype(ts_cfg, &FunctionResultVariant::Value(t.clone()), type_map)?;
+            Ok((data, None))
+        }
+        None => Ok(("void".to_string(), None)),
+    }
 }
 
 pub fn events_map(

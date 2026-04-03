@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashSet},
     fs::{self, File},
     io::Write,
     path::Path,
@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     event::EventRegistryMeta, Commands, ErrorHandlingMode, EventRegistry, Events, LanguageExt,
+    Mutations, Queries, TanstackFramework,
 };
 use serde::Serialize;
 use specta::{
@@ -90,6 +91,11 @@ pub struct Builder<R: Runtime = RT> {
     plugin_name: Option<&'static str>,
     commands: Commands<R>,
     command_types: Vec<Function>,
+    queries: Queries<R>,
+    query_types: Vec<Function>,
+    mutations: Mutations<R>,
+    mutation_types: Vec<Function>,
+    tanstack: Option<TanstackFramework>,
     error_handling: ErrorHandlingMode,
     events: BTreeMap<&'static str, DataType>,
     event_sids: BTreeSet<SpectaID>,
@@ -103,6 +109,11 @@ impl<R: Runtime> Default for Builder<R> {
             plugin_name: None,
             commands: Commands::default(),
             command_types: Default::default(),
+            queries: Queries::default(),
+            query_types: Default::default(),
+            mutations: Mutations::default(),
+            mutation_types: Default::default(),
+            tanstack: None,
             error_handling: Default::default(),
             events: Default::default(),
             event_sids: Default::default(),
@@ -156,6 +167,46 @@ impl<R: Runtime> Builder<R> {
             commands,
             ..self
         }
+    }
+
+    /// Register queries for TanStack Query integration.
+    ///
+    /// **WARNING:** This method will overwrite any previously registered queries.
+    pub fn queries(mut self, queries: Queries<R>) -> Self {
+        let query_types = (queries.1)(&mut self.types);
+
+        self.types
+            .remove(<tauri::ipc::Channel<()> as specta::NamedType>::sid());
+
+        Self {
+            query_types,
+            queries,
+            ..self
+        }
+    }
+
+    /// Register mutations for TanStack Query integration.
+    ///
+    /// **WARNING:** This method will overwrite any previously registered mutations.
+    pub fn mutations(mut self, mutations: Mutations<R>) -> Self {
+        let mutation_types = (mutations.1)(&mut self.types);
+
+        self.types
+            .remove(<tauri::ipc::Channel<()> as specta::NamedType>::sid());
+
+        Self {
+            mutation_types,
+            mutations,
+            ..self
+        }
+    }
+
+    /// Set the TanStack Query framework for code generation.
+    ///
+    /// Controls which package the generated `queryOptions`/`mutationOptions` imports come from.
+    pub fn tanstack(mut self, framework: TanstackFramework) -> Self {
+        self.tanstack = Some(framework);
+        self
     }
 
     /// Register events with the builder.
@@ -261,7 +312,30 @@ impl<R: Runtime> Builder<R> {
     /// The Tauri invoke handler to trigger commands registered with the builder.
     pub fn invoke_handler(&self) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
         let commands = self.commands.0.clone();
-        move |invoke| commands(invoke)
+        let queries = self.queries.0.clone();
+        let mutations = self.mutations.0.clone();
+
+        let query_names: HashSet<String> = self
+            .query_types
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+        let mutation_names: HashSet<String> = self
+            .mutation_types
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+
+        move |invoke| {
+            let cmd = invoke.message.command();
+            if query_names.contains(cmd) {
+                queries(invoke)
+            } else if mutation_names.contains(cmd) {
+                mutations(invoke)
+            } else {
+                commands(invoke)
+            }
+        }
     }
 
     /// Mount all of the events in the builder onto a Tauri app.
@@ -326,6 +400,9 @@ impl<R: Runtime> Builder<R> {
             // TODO: Don't clone stuff
             commands: self.command_types.clone(),
             error_handling: self.error_handling,
+            queries: self.query_types.clone(),
+            mutations: self.mutation_types.clone(),
+            tanstack: self.tanstack,
             events: self.events.clone(),
             type_map: self.types.clone(),
             constants: self.constants.clone(),

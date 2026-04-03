@@ -14,8 +14,8 @@ type __EventObj__<T> = {
     cb: TAURI_API_EVENT.EventCallback<T>,
   ) => ReturnType<typeof TAURI_API_EVENT.once<T>>;
   emit: null extends T
-  ? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
-  : (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>;
+    ? (payload?: T) => ReturnType<typeof TAURI_API_EVENT.emit>
+    : (payload: T) => ReturnType<typeof TAURI_API_EVENT.emit>;
 };
 
 export type Result<T, E> =
@@ -40,7 +40,9 @@ export function __makeEvents__<T extends Record<string, any>>(
       emit: (payload: any) => TAURI_API_EVENT.emit(name, payload),
     };
 
-    const withWindow = (window: __Webview__ | __Window__): __EventObj__<any> => ({
+    const withWindow = (
+      window: __Webview__ | __Window__,
+    ): __EventObj__<any> => ({
       listen: (cb) => window.listen(name, cb),
       once: (cb) => window.once(name, cb),
       emit: (payload: any) => window.emit(name, payload),
@@ -52,3 +54,22 @@ export function __makeEvents__<T extends Record<string, any>>(
   return result;
 }
 
+export function filterKey<
+  const P extends readonly unknown[],
+  A extends Record<string, unknown>,
+>(prefix: P, args: A): readonly [...P] | readonly [...P, Partial<A>] {
+  const filtered = Object.fromEntries(
+    Object.entries(args).filter(([, v]) => v !== undefined),
+  );
+  return Object.keys(filtered).length > 0
+    ? ([...prefix, filtered] as const as any)
+    : ([...prefix] as const);
+}
+
+export async function unwrapTypedError<T, E>(
+  result: Promise<{ status: "ok"; data: T } | { status: "error"; error: E }>,
+): Promise<T> {
+  const v = await result;
+  if (v.status === "error") throw v.error;
+  return v.data;
+}

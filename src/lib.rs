@@ -204,10 +204,12 @@ mod builder;
 mod event;
 mod lang;
 mod macros;
+mod queries;
 
 pub use builder::Builder;
 pub(crate) use event::EventRegistry;
 pub use event::{Event, TypedEvent};
+pub use queries::{Mutations, Queries, TanstackFramework};
 
 /// A wrapper around the output of the `collect_commands` macro.
 ///
@@ -248,6 +250,9 @@ pub struct ExportContext {
     pub plugin_name: Option<&'static str>,
     pub commands: Vec<datatype::Function>,
     pub error_handling: ErrorHandlingMode,
+    pub queries: Vec<datatype::Function>,
+    pub mutations: Vec<datatype::Function>,
+    pub tanstack: Option<TanstackFramework>,
     pub events: BTreeMap<&'static str, DataType>,
     pub type_map: TypeMap,
     pub constants: BTreeMap<Cow<'static, str>, serde_json::Value>,
@@ -300,7 +305,7 @@ pub(crate) fn apply_as_prefix(plugin_name: &str, s: &str, item_type: ItemType) -
 }
 
 /// The mode which the error handling is done in the bindings.
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub enum ErrorHandlingMode {
     /// Errors will be thrown
     Throw,
@@ -326,6 +331,28 @@ pub mod internal {
         F: Fn(Invoke<R>) -> bool + Send + Sync + 'static,
     {
         Commands(Arc::new(f), types)
+    }
+
+    /// called by `collect_queries` to construct `Queries`
+    pub fn query<R: Runtime, F>(
+        f: F,
+        types: fn(&mut TypeMap) -> Vec<datatype::Function>,
+    ) -> Queries<R>
+    where
+        F: Fn(Invoke<R>) -> bool + Send + Sync + 'static,
+    {
+        Queries(Arc::new(f), types)
+    }
+
+    /// called by `collect_mutations` to construct `Mutations`
+    pub fn mutation<R: Runtime, F>(
+        f: F,
+        types: fn(&mut TypeMap) -> Vec<datatype::Function>,
+    ) -> Mutations<R>
+    where
+        F: Fn(Invoke<R>) -> bool + Send + Sync + 'static,
+    {
+        Mutations(Arc::new(f), types)
     }
 
     /// called by `collect_events` to register events to an `Events`

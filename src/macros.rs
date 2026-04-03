@@ -49,6 +49,34 @@ macro_rules! collect_commands {
     };
 }
 
+/// Collect queries for TanStack Query integration.
+///
+/// Same usage as [`collect_commands!`] but returns a [`Queries`](crate::Queries) struct
+/// for [`Builder::queries`](crate::Builder::queries).
+#[macro_export]
+macro_rules! collect_queries {
+    ($($b:ident $(:: $($p:ident)? $(<$($g:path),*>)? )* ),* $(,)?) => {
+        $crate::internal::query(
+            ::tauri::generate_handler![$($b $($(::$p)? )* ),*],
+            ::specta::function::collect_functions![$($b $($(::$p)? $(::<$($g),*>)? )* ),*],
+        )
+    };
+}
+
+/// Collect mutations for TanStack Query integration.
+///
+/// Same usage as [`collect_commands!`] but returns a [`Mutations`](crate::Mutations) struct
+/// for [`Builder::mutations`](crate::Builder::mutations).
+#[macro_export]
+macro_rules! collect_mutations {
+    ($($b:ident $(:: $($p:ident)? $(<$($g:path),*>)? )* ),* $(,)?) => {
+        $crate::internal::mutation(
+            ::tauri::generate_handler![$($b $($(::$p)? )* ),*],
+            ::specta::function::collect_functions![$($b $($(::$p)? $(::<$($g),*>)? )* ),*],
+        )
+    };
+}
+
 /// Collect events and their types.
 ///
 /// This returns a [`Events`](crate::Events) struct that can be passed to [`Builder::events`](crate::Builder::events).

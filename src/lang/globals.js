@@ -59,3 +59,16 @@ export function __makeEvents__(mappings) {
 
   return result;
 }
+
+export function filterKey(prefix, args) {
+  const filtered = Object.fromEntries(
+    Object.entries(args).filter(([, v]) => v !== undefined),
+  );
+  return Object.keys(filtered).length > 0 ? [...prefix, filtered] : [...prefix];
+}
+
+export async function unwrapTypedError(result) {
+  const v = await result;
+  if (v.status === "error") throw v.error;
+  return v.data;
+}
