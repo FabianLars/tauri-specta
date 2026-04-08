@@ -52,7 +52,6 @@ impl LanguageExt for specta_jsdoc::JSDoc {
     }
 }
 
-
 fn render_commands(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
     let all_commands: Vec<_> = cfg
         .commands
@@ -115,7 +114,7 @@ fn render_commands(ts: &Typescript, cfg: &ExportContext) -> Result<String, Expor
 }
 
 fn render_query_keys(cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.queries.is_empty() {
+    if cfg.queries.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -158,7 +157,7 @@ export const queryKeys = {{
 }
 
 fn render_queries(cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.queries.is_empty() {
+    if cfg.queries.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -200,7 +199,7 @@ export const queries = {{
 }
 
 fn render_mutation_keys(cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.mutations.is_empty() {
+    if cfg.mutations.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -230,7 +229,7 @@ export const mutationKeys = {{
 }
 
 fn render_mutations(cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.mutations.is_empty() {
+    if cfg.mutations.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 

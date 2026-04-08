@@ -107,7 +107,7 @@ export const commands = {{
 }
 
 fn render_query_keys(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.queries.is_empty() {
+    if cfg.queries.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -163,7 +163,7 @@ export const queryKeys = {{
 }
 
 fn render_queries(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.queries.is_empty() {
+    if cfg.queries.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -221,7 +221,7 @@ export const queries = {{
 }
 
 fn render_mutation_keys(_ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.mutations.is_empty() {
+    if cfg.mutations.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
@@ -251,7 +251,7 @@ export const mutationKeys = {{
 }
 
 fn render_mutations(ts: &Typescript, cfg: &ExportContext) -> Result<String, ExportError> {
-    if cfg.mutations.is_empty() {
+    if cfg.mutations.is_empty() || cfg.tanstack.is_none() {
         return Ok(Default::default());
     }
 
